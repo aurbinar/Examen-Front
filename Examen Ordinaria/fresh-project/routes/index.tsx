@@ -1,25 +1,36 @@
-import { useSignal } from "@preact/signals";
-import Counter from "../islands/Counter.tsx";
+import { FreshContext, Handlers, PageProps } from "$fresh/server.ts";
+import axios from "npm:axios"
+import CharacterList from "../components/CharacterList.tsx";
 
-export default function Home() {
-  const count = useSignal(3);
-  return (
-    <div class="px-4 py-8 mx-auto bg-[#86efac]">
-      <div class="max-w-screen-md mx-auto flex flex-col items-center justify-center">
-        <img
-          class="my-6"
-          src="/logo.svg"
-          width="128"
-          height="128"
-          alt="the Fresh logo: a sliced lemon dripping with juice"
-        />
-        <h1 class="text-4xl font-bold">Welcome to Fresh</h1>
-        <p class="my-4">
-          Try updating this message in the
-          <code class="mx-2">./routes/index.tsx</code> file, and refresh.
-        </p>
-        <Counter count={count} />
-      </div>
-    </div>
-  );
+type Character = {
+  id: string,
+  name: string,
+  image: string,
+  favorite: boolean,
 }
+
+type Data = {
+  characters: Character[],
+}
+
+type CharacterAPI = Character[];
+
+export const handler: Handlers = {
+  GET: async (_req: Request, ctx: FreshContext<unknown, Data>) => {
+    const headers = new Headers()
+      try {
+      const response = await axios.get<CharacterAPI>("https://hp-api.onrender.com/api/characters")
+      const chars = response.data;
+
+      headers.append("Set-Cookie", "favorite=false; path=/");
+      headers.append("location", "/favorites");
+      return ctx.render({characters: chars});
+    }catch(e){
+      return new Response(`Error: ${e}`)
+    }
+  }
+}
+
+const Home = (props: PageProps<Data>) => <CharacterList characters={props.data.characters}/>
+
+export default Home;
